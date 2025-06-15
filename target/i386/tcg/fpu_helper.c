@@ -2597,13 +2597,16 @@ static void do_xsave_pkru(CPUX86State *env, target_ulong ptr, uintptr_t ra)
 }
 
 static void do_xsave_uintr(CPUX86State *env, target_ulong ptr, uintptr_t ra){ //改
-    qemu_log("do xsave uintr called\n");
-    cpu_stq_data_ra(env, ptr, env->uintr_handler, ra);
-    cpu_stq_data_ra(env, ptr+8, env->uintr_stackadjust, ra);
-    cpu_stq_data_ra(env, ptr+16, env->uintr_misc, ra);
-    cpu_stq_data_ra(env, ptr+24, env->uintr_pd, ra);
-    cpu_stq_data_ra(env, ptr+32, env->uintr_rr, ra);
-    cpu_stq_data_ra(env, ptr+40, env->uintr_tt, ra);
+    // qemu_log("do xsave uintr called\n");
+    cpu_stq_data_ra(env, ptr + offsetof(XSaveUINTR, handler), env->uintr_handler, ra);
+    cpu_stq_data_ra(env, ptr + offsetof(XSaveUINTR, stack_adjust), env->uintr_stackadjust, ra);
+    // if (env->uintr_misc != 0 || env->uintr_uif != 0) {
+    //     qemu_log("misc_uif: %lx\n", env->uintr_misc + (env->uintr_uif << 63));
+    // }
+    cpu_stq_data_ra(env, ptr + offsetof(XSaveUINTR, misc_uif), env->uintr_misc + (env->uintr_uif << 63), ra);
+    cpu_stq_data_ra(env, ptr + offsetof(XSaveUINTR, upidaddr), env->uintr_pd, ra);
+    cpu_stq_data_ra(env, ptr + offsetof(XSaveUINTR, uirr), env->uintr_rr, ra);
+    cpu_stq_data_ra(env, ptr + offsetof(XSaveUINTR, uittaddr), env->uintr_tt, ra);
 }
 
 static void do_fxsave(CPUX86State *env, target_ulong ptr, uintptr_t ra)
@@ -2781,20 +2784,28 @@ static void do_xrstor_pkru(CPUX86State *env, target_ulong ptr, uintptr_t ra)
 }
 
 static void do_xrstor_uintr(CPUX86State *env, target_ulong ptr, uintptr_t ra){ //改
-    qemu_log("do xrstror uintr called\n");
-    env->uintr_handler = cpu_ldq_data_ra(env, ptr, ra);
-    env->uintr_stackadjust = cpu_ldq_data_ra(env, ptr+8, ra);
-    // env->uintr_misc = cpu_ldq_data_ra(env, ptr+16, ra);
-    uint64_t tmp = cpu_ldq_data_ra(env, ptr+16, ra);
-    env->uintr_misc = (tmp <<1) >>1; // 最高位清零
-    env->uintr_pd = cpu_ldq_data_ra(env, ptr+24, ra);
-    env->uintr_rr = cpu_ldq_data_ra(env, ptr+32, ra);
-    env->uintr_tt = cpu_ldq_data_ra(env, ptr+40, ra);
+    // qemu_log("do xrstror uintr called\n");
+    env->uintr_handler = cpu_ldq_data_ra(env, ptr + offsetof(XSaveUINTR, handler), ra);
+    env->uintr_stackadjust = cpu_ldq_data_ra(env, ptr + offsetof(XSaveUINTR, stack_adjust), ra);
+    uint64_t temp = cpu_ldq_data_ra(env, ptr + offsetof(XSaveUINTR, misc_uif), ra);
+    // if (env->uintr_uif != (temp >> 63)) {
+    //     qemu_log("env: %lx, uif: %ld\n", (long unsigned int)env, env->uintr_uif);
+    //     qemu_log("restore switch uif, core: %d, on: %ld\n", get_apic_id(cpu_get_current_apic()), temp >> 63);
+    // }
+    env->uintr_uif = temp >> 63;
+    env->uintr_misc = (temp << 1) >> 1;
+    // if (temp != 0) {
+    //     qemu_log("uintr misc_uif: %lx\n", temp);
+    // }
+    env->uintr_pd = cpu_ldq_data_ra(env, ptr + offsetof(XSaveUINTR, upidaddr), ra);
+    env->uintr_rr = cpu_ldq_data_ra(env, ptr + offsetof(XSaveUINTR, uirr), ra);
+    env->uintr_tt = cpu_ldq_data_ra(env, ptr + offsetof(XSaveUINTR, uittaddr), ra);
 }
 
 static void clear_uintr_reg(CPUX86State *env){ // 改
     env->uintr_handler=0;
     env->uintr_stackadjust=0;
+    env->uintr_uif=0;
     env->uintr_misc=0;
     env->uintr_pd=0;
     env->uintr_rr=0;

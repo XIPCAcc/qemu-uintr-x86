@@ -105,13 +105,13 @@ void helper_senduipi(CPUX86State *env ,int reg_index){
     uint64_t upid_phyaddress = get_hphys2(cs, uitte.target_upid_addr, MMU_DATA_LOAD, NULL);
     qemu_log("uitt addr: 0x%lx  upid addr: 0x%lx\n", env->uintr_tt, uitte.target_upid_addr); 
     struct uintr_upid upid;
-    cpu_physical_memory_rw(upid_phyaddress, &upid, 16, false);
+    cpu_physical_memory_rw(upid_phyaddress, &upid, sizeof(uintr_upid), false);
     // tempUPID.PIR[tempUITTE.UV] := 1;
     upid.puir |= 1<<uitte.user_vec;
     
     bool sendNotify;
     //IF tempUPID.SN = tempUPID.ON = 0
-    if((upid.nc.status&0x11) == 0){
+    if((upid.nc.status & 0x3) == 0){
     //THEN  tempUPID.ON := 1;   sendNotify := 1;
         upid.nc.status |= UPID_ON;
         sendNotify = true;
@@ -119,7 +119,7 @@ void helper_senduipi(CPUX86State *env ,int reg_index){
         sendNotify = false;
     }
     //write tempUPID to 16 bytes at tempUITTE.UPIDADDR;// release lock
-    cpu_physical_memory_rw(upid_phyaddress, &upid, 16, true);
+    cpu_physical_memory_rw(upid_phyaddress, &upid, sizeof(uintr_upid), true);
     qemu_mutex_unlock_iothread();
 
     qemu_log("senduipi core: %d uitte index:%d  dist core: %d ifsend: %d, nv: %d\n", get_apic_id(cpu_get_current_apic()), uitte_index, upid.nc.ndst >> 8, sendNotify,upid.nc.nv);
