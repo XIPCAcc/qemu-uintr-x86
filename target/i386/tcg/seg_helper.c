@@ -891,6 +891,14 @@ void helper_stui(CPUX86State *env){
     switch_uif(env, true);
 }
 
+void helper_testui(CPUX86State *env){
+    if(uif_enable(env)){
+        cpu_load_eflags(env, CC_C, CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
+    }else{
+        cpu_load_eflags(env, 0, CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
+    }
+}
+
 void helper_clui(CPUX86State *env){
     qemu_log("clui core: %d\n", get_apic_id(cpu_get_current_apic()));
     switch_uif(env, false);
@@ -978,9 +986,9 @@ static void do_interrupt64(CPUX86State *env, int intno, int is_int,
             int id = get_apic_id(dev);
             qemu_log("--uif zero,prev:%d | id:%d return\n",cpl, id);
             rrzero_count +=1; 
-            if(rrzero_count > 2000){
+            if(rrzero_count == 2001){
                 qemu_log("too many zeros, exit\n");
-                exit(2);
+                // exit(2);
             }
             helper_clear_eoi(env);
             return;

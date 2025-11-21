@@ -1391,11 +1391,7 @@ typedef struct XSaveUINTR {
     uint64_t handler;
     uint64_t stack_adjust;
 
-    uint32_t uittsz;
-    uint8_t uinv;
-    uint8_t pad1;
-    uint8_t pad2;
-    uint8_t uif; // bit7 is the uif
+    uint64_t misc_uif;
 
     uint64_t upidaddr;
     uint64_t uirr;

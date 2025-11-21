@@ -24,6 +24,7 @@
 #include "qemu/hw-version.h"
 #include "cpu.h"
 #include "tcg/helper-tcg.h"
+#include "tcg/tcg-cpu.h"
 #include "sysemu/reset.h"
 #include "sysemu/hvf.h"
 #include "kvm/kvm_i386.h"
@@ -1417,9 +1418,9 @@ ExtSaveArea x86_ext_save_areas[XSAVE_STATE_AREA_COUNT] = {
     [XSTATE_PKRU_BIT] =
           { .feature = FEAT_7_0_ECX, .bits = CPUID_7_0_ECX_PKU,
             .size = sizeof(XSavePKRU) },
-    // [XSTATE_UINTR_BIT] = // 改！！
-    //       { .feature = FEAT_7_0_EDX, .bits = CPUID_7_0_EDX_UINTR,
-    //         .size = sizeof(XSaveUINTR), .offset = 0xa90},
+    [XSTATE_UINTR_BIT] = // 改！！
+          { .feature = FEAT_7_0_EDX, .bits = CPUID_7_0_EDX_UINTR,
+            .size = sizeof(XSaveUINTR), .offset = offsetof(X86XSaveArea, uintr_state)},
     [XSTATE_XTILE_CFG_BIT] = {
         .feature = FEAT_7_0_EDX, .bits = CPUID_7_0_EDX_AMX_TILE,
         .size = sizeof(XSaveXTILECFG),
@@ -1799,7 +1800,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
             CPUID_MTRR | CPUID_CLFLUSH | CPUID_MCA |
             CPUID_PSE36,
         .features[FEAT_1_ECX] =
-            CPUID_EXT_SSE3 | CPUID_EXT_CX16,
+            CPUID_EXT_SSE3 | CPUID_EXT_CX16 | CPUID_EXT_XSAVE,
             // |  CPUID_EXT_XSAVE, //改
         // .features[FEAT_7_0_EBX] = // 改
         //     CPUID_7_0_EBX_MPX,

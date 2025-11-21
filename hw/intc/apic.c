@@ -950,56 +950,9 @@ int get_apic_id(DeviceState *dev){
     return s->id;
 }
 
-static void apic_deliver2(uint8_t dest, uint8_t dest_mode,
-                         uint8_t delivery_mode, uint8_t vector_num,
-                         uint8_t trigger_mode) // delivery mode APIC_DM_FIXED  dest mode: 0 , trigger_mode  trigger: APIC_TRIGGER_EDGE
-{
-    APICCommonState *s = local_apics[dest];
-    uint32_t deliver_bitmask[MAX_APIC_WORDS];
-    int dest_shorthand = (s->icr[0] >> 18) & 3;
-    APICCommonState *apic_iter;
-    switch (dest_shorthand) {
-    case 0:
-        apic_get_delivery_bitmask(deliver_bitmask, dest, dest_mode);
-        break;
-    case 1:
-        memset(deliver_bitmask, 0x00, sizeof(deliver_bitmask));
-        apic_set_bit(deliver_bitmask, s->id);
-        break;
-    case 2:
-        memset(deliver_bitmask, 0xff, sizeof(deliver_bitmask));
-        break;
-    case 3:
-        memset(deliver_bitmask, 0xff, sizeof(deliver_bitmask));
-        apic_reset_bit(deliver_bitmask, s->id);
-        break;
-    }
-
-    switch (delivery_mode) {
-        case APIC_DM_INIT:
-            {
-                int trig_mode = (s->icr[0] >> 15) & 1;
-                int level = (s->icr[0] >> 14) & 1;
-                if (level == 0 && trig_mode == 1) {
-                    foreach_apic(apic_iter, deliver_bitmask,
-                                 apic_iter->arb_id = apic_iter->id );
-                    return;
-                }
-            }
-            break;
-
-        case APIC_DM_SIPI:
-            foreach_apic(apic_iter, deliver_bitmask,
-                         apic_startup(apic_iter, vector_num) );
-            return;
-    }
-
-    apic_bus_deliver(deliver_bitmask, delivery_mode, vector_num, trigger_mode);
-}
-
 void send_ipi(uint8_t dest, uint8_t nv){
     qemu_mutex_lock_iothread();
-    apic_deliver2(dest, 0 ,APIC_DM_FIXED, nv, APIC_TRIGGER_EDGE);
+    apic_deliver_irq(dest, 0 ,APIC_DM_FIXED, nv, APIC_TRIGGER_EDGE);
     qemu_mutex_unlock_iothread();
 }
 
